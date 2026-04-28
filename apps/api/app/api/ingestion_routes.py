@@ -1,0 +1,101 @@
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+import os
+from datetime import datetime
+from sqlalchemy.orm import Session
+
+from app.ingestion.parser.parser import parse_file
+from app.core.role_checker import require_role
+from app.db.connection import SessionLocal
+from app.db.models import Document
+
+from app.rag.chunker import chunk_text
+from app.rag.embedder import generate_embeddings
+from app.rag.vector_store import store_embeddings
+
+router = APIRouter(prefix="/ingestion", tags=["Ingestion"])
+
+UPLOAD_DIR = "uploaded_files"
+ALLOWED_EXTENSIONS = {"pdf", "csv", "xlsx", "eml"}
+
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@router.post("/upload")
+def upload_file(
+    file: UploadFile = File(...),
+    user=Depends(require_role("admin")),
+    db: Session = Depends(get_db)
+):
+    try:
+        # --- VALIDATION ---
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="Invalid file")
+
+        extension = file.filename.split(".")[-1].lower()
+
+        if extension not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail="Unsupported file type"
+            )
+
+        # --- SAVE FILE ---
+        file_path = os.path.join(UPLOAD_DIR, file.filename)
+
+        with open(file_path, "wb") as f:
+            f.write(file.file.read())
+
+        # --- PARSE FILE ---
+        try:
+            parsed_content = parse_file(file_path, extension)
+        except Exception as parse_error:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Parsing failed: {str(parse_error)}"
+            )
+
+        # --- STORE METADATA ---
+        doc = Document(
+            filename=file.filename,
+            file_type=extension,
+            file_path=file_path,
+            uploaded_by=user["email"],
+            uploaded_at=datetime.utcnow()
+        )
+
+        db.add(doc)
+        db.commit()
+        db.refresh(doc)
+
+        # --- RAG PIPELINE (SAFE) ---
+        try:
+            chunks = chunk_text(parsed_content)
+            embeddings = generate_embeddings(chunks)
+            store_embeddings(doc.id, chunks, embeddings)
+        except Exception as rag_error:
+            raise HTTPException(
+                status_code=500,
+                detail=f"RAG pipeline failed: {str(rag_error)}"
+            )
+
+        # --- RESPONSE ---
+        return {
+            "message": "File uploaded and processed successfully",
+            "document_id": doc.id,
+            "filename": doc.filename,
+            "file_type": doc.file_type,
+            "preview": parsed_content[:500] if parsed_content else ""
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
