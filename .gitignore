@@ -16,3 +16,6 @@ uploaded_files/
 
 # Vector DB
 vector_store.json
+
+# ChromaDB
+apps/api/chroma_db/

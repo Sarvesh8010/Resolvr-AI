@@ -2,6 +2,7 @@ from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 import os
 from datetime import datetime
 from sqlalchemy.orm import Session
+from langchain_core.documents import Document as LangchainDocument
 
 from app.ingestion.parser.parser import parse_file
 from app.core.role_checker import require_role
@@ -9,8 +10,7 @@ from app.db.connection import SessionLocal
 from app.db.models import Document
 
 from app.rag.chunker import chunk_text
-from app.rag.embedder import generate_embeddings
-from app.rag.vector_store import store_embeddings
+from app.rag.vector_store import vector_store
 
 router = APIRouter(prefix="/ingestion", tags=["Ingestion"])
 
@@ -75,11 +75,23 @@ def upload_file(
         db.commit()
         db.refresh(doc)
 
-        # --- RAG PIPELINE (SAFE) ---
+        # --- RAG PIPELINE USING CHROMADB ---
         try:
             chunks = chunk_text(parsed_content)
-            embeddings = generate_embeddings(chunks)
-            store_embeddings(doc.id, chunks, embeddings)
+
+            documents = [
+                LangchainDocument(
+                    page_content=chunk,
+                    metadata={
+                        "source": file.filename,
+                        "document_id": doc.id
+                    }
+                )
+                for chunk in chunks
+            ]
+
+            vector_store.add_documents(documents)
+
         except Exception as rag_error:
             raise HTTPException(
                 status_code=500,
@@ -92,10 +104,12 @@ def upload_file(
             "document_id": doc.id,
             "filename": doc.filename,
             "file_type": doc.file_type,
+            "chunks_created": len(chunks),
             "preview": parsed_content[:500] if parsed_content else ""
         }
 
     except HTTPException:
         raise
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

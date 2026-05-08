@@ -1,21 +1,10 @@
-import json
-import os
+from langchain_chroma import Chroma
+from app.rag.embedder import embedding_model
 
-VECTOR_DB_PATH = "vector_store.json"
+VECTOR_DB_PATH = "chroma_db"
 
-def store_embeddings(document_id, chunks, embeddings):
-    data = []
-
-    if os.path.exists(VECTOR_DB_PATH):
-        with open(VECTOR_DB_PATH, "r") as f:
-            data = json.load(f)
-
-    for chunk, embedding in zip(chunks, embeddings):
-        data.append({
-            "document_id": document_id,
-            "text": chunk,
-            "embedding": embedding
-        })
-
-    with open(VECTOR_DB_PATH, "w") as f:
-        json.dump(data, f)
+vector_store = Chroma(
+    collection_name="documents",
+    embedding_function=embedding_model,
+    persist_directory=VECTOR_DB_PATH
+)
