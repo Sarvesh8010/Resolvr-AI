@@ -7,6 +7,7 @@ from app.schemas.auth_schema import UserCreate
 from app.schemas.user_schema import UserResponse
 from app.services.auth_service import create_user, authenticate_user
 from app.core.security import create_access_token
+from app.core.auth_middleware import get_current_user
 
 # Create router FIRST
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -46,4 +47,15 @@ def login(
     return {
         "access_token": token,
         "token_type": "bearer"
+    }
+
+
+@router.get("/me")
+def get_me(
+    user=Depends(get_current_user)
+):
+
+    return {
+        "email": user["email"],
+        "role": user["role"]
     }

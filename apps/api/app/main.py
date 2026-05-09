@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 # Load environment variables (HF, GROQ, etc.)
@@ -8,6 +9,9 @@ from app.db.connection import Base, engine
 from app.api.auth_routes import router as auth_router
 from app.api.ingestion_routes import router as ingestion_router
 from app.api.query_routes import router as query_router
+from app.api.document_routes import router as document_router
+from app.api.history_routes import router as history_router
+from app.api.conversation_routes import router as conversation_router
 
 from app.core.auth_middleware import get_current_user
 from app.core.role_checker import require_role
@@ -22,6 +26,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# ---------------- CORS ----------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Create tables at startup
 Base.metadata.create_all(bind=engine)
 
@@ -30,7 +43,9 @@ Base.metadata.create_all(bind=engine)
 app.include_router(auth_router)
 app.include_router(ingestion_router)
 app.include_router(query_router)
-
+app.include_router(document_router)
+app.include_router(history_router)
+app.include_router(conversation_router)
 
 # ---------------- HEALTH ----------------
 @app.get("/")

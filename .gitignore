@@ -1,21 +1,25 @@
 # Python
+venv/
 __pycache__/
 *.pyc
 
-# Virtual env
-venv/
-
-# Env
+# Environment
 .env
 
-# Database
-*.db
-
-# Uploaded files
+# Uploads
 uploaded_files/
 
 # Vector DB
-vector_store.json
+chroma_db/
 
-# ChromaDB
-apps/api/chroma_db/
+# Node
+node_modules/
+
+# Frontend Build
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+*.db

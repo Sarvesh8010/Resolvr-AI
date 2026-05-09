@@ -6,44 +6,38 @@ client = Groq(
 )
 
 
-def generate_answer(query: str, context: str):
-
-    # --- LIMIT CONTEXT SIZE ---
-    context = context[:4000]
+def generate_streaming_answer(query: str, context: str):
 
     prompt = f"""
-You are Resolvr AI, an intelligent enterprise document assistant.
+You are Resolvr AI.
 
-Your job:
-- Answer ONLY using the provided context
-- Give concise and professional answers
-- Do NOT hallucinate
-- If answer is missing, say:
+Answer ONLY from the provided context.
+
+If the answer is not in the context, say:
 "I could not find this information in the uploaded documents."
 
 Context:
 {context}
 
-User Question:
+Question:
 {query}
-
-Answer:
 """
 
-    response = client.chat.completions.create(
+    stream = client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=[
-            {
-                "role": "system",
-                "content": "You are a precise RAG assistant."
-            },
             {
                 "role": "user",
                 "content": prompt
             }
         ],
-        temperature=0.1,
-        max_tokens=300
+        temperature=0.2,
+        stream=True
     )
 
-    return response.choices[0].message.content
+    for chunk in stream:
+
+        content = chunk.choices[0].delta.content
+
+        if content:
+            yield content
