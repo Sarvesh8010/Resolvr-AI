@@ -76,7 +76,12 @@ def stream_query(
     # ---------------- RETRIEVAL ----------------
     
     retrieved_chunks = retrieve_relevant_chunks(
-        enhanced_query
+        
+        enhanced_query,
+    
+        user_email=user["email"],
+    
+        user_role=user["role"]
     )
 
     # NO RELEVANT CONTEXT

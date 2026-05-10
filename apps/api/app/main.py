@@ -19,6 +19,9 @@ from app.core.role_checker import require_role
 # Ensure models are registered
 from app.db import models
 
+from app.api.admin_routes import (
+    router as admin_router
+)
 
 app = FastAPI(
     title="Resolvr AI",
@@ -46,6 +49,7 @@ app.include_router(query_router)
 app.include_router(document_router)
 app.include_router(history_router)
 app.include_router(conversation_router)
+app.include_router(admin_router)
 
 # ---------------- HEALTH ----------------
 @app.get("/")

@@ -109,7 +109,9 @@ def upload_file(
                 page_content=chunk,
                 metadata={
                     "source": file.filename,
-                    "document_id": doc.id
+                    "document_id": doc.id,
+                    "uploaded_by": user["email"],
+                    "uploaded_role": user["role"]
                 }
             )
             for chunk in chunks

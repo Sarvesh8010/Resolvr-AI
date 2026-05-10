@@ -1,10 +1,33 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException
+)
+
+from app.core.role_checker import require_role
+
 from sqlalchemy.orm import Session
-import os
 
 from app.db.connection import SessionLocal
-from app.db.models import Document
-from app.core.role_checker import require_role
+
+from app.db.models import (
+    Document,
+    User
+)
+
+from app.core.auth_middleware import (
+    get_current_user
+)
+
+def get_db():
+
+    db = SessionLocal()
+
+    try:
+        yield db
+
+    finally:
+        db.close()
 
 router = APIRouter(
     prefix="/documents",
@@ -70,4 +93,68 @@ def delete_document(
 
     return {
         "message": "Document deleted successfully"
+    }
+
+
+# GET CURRENT USER DOCUMENTS
+@router.get("/my-documents")
+def get_my_documents(
+
+    current_user: User = Depends(
+        get_current_user
+    ),
+
+    db: Session = Depends(get_db)
+):
+
+    documents = db.query(Document).filter(
+        Document.uploaded_by ==
+        current_user.email
+    ).all()
+
+    return documents
+
+
+# DELETE OWN DOCUMENT
+@router.delete("/my-documents/{document_id}")
+def delete_my_document(
+
+    document_id: int,
+
+    current_user: User = Depends(
+        get_current_user
+    ),
+
+    db: Session = Depends(get_db)
+):
+
+    document = db.query(Document).filter(
+        Document.id == document_id
+    ).first()
+
+    if not document:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found"
+        )
+
+    # OWNERSHIP CHECK
+    if (
+        document.uploaded_by
+        != current_user.email
+    ):
+
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized"
+        )
+
+    db.delete(document)
+
+    db.commit()
+
+    return {
+        "message":
+        "Document deleted"
     }

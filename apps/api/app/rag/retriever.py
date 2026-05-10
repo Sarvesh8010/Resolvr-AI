@@ -35,14 +35,51 @@ def keyword_overlap_score(
 
 def retrieve_relevant_chunks(
     query,
+    user_email,
+    user_role,
     k=5
 ):
 
     # VECTOR SEARCH
-    results = vector_store.similarity_search_with_score(
-        query,
-        k=10
-    )
+    # ---------------- ACCESS FILTER ----------------
+    
+    if user_role == "admin":
+    
+        results = (
+            vector_store
+            .similarity_search_with_score(
+                query,
+                k=10
+            )
+        )
+    
+    else:
+    
+        results = (
+            vector_store
+            .similarity_search_with_score(
+            
+                query,
+    
+                k=10,
+    
+                filter={
+                
+                    "$or": [
+                    
+                        {
+                            "uploaded_role":
+                            "admin"
+                        },
+    
+                        {
+                            "uploaded_by":
+                            user_email
+                        }
+                    ]
+                }
+            )
+        )
 
     retrieved_chunks = []
 
