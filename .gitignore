@@ -1,5 +1,25 @@
+# Python
 venv/
 __pycache__/
 *.pyc
+
+# Environment
 .env
+
+# Uploads
+uploaded_files/
+
+# Vector DB
+chroma_db/
+
+# Node
 node_modules/
+
+# Frontend Build
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+*.db
